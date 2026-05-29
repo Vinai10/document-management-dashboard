@@ -2,17 +2,19 @@ package com.docmanagement.controller;
 
 import com.docmanagement.dto.NotificationDto;
 import com.docmanagement.service.NotificationService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/notifications")
-@RequiredArgsConstructor
 public class NotificationController {
 
     private final NotificationService notificationService;
+
+    public NotificationController(NotificationService notificationService) {
+        this.notificationService = notificationService;
+    }
 
     @GetMapping
     public ResponseEntity<List<NotificationDto>> getAllNotifications() {

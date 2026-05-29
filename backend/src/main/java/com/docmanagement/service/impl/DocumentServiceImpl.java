@@ -3,7 +3,10 @@ package com.docmanagement.service.impl;
 import com.docmanagement.dto.DocumentDto;
 import com.docmanagement.entity.Document;
 import com.docmanagement.entity.Document.DocumentStatus;
+import com.docmanagement.entity.Notification;
+import com.docmanagement.entity.Notification.NotificationType;
 import com.docmanagement.repository.DocumentRepository;
+import com.docmanagement.repository.NotificationRepository;
 import com.docmanagement.service.DocumentService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,12 +26,14 @@ import org.springframework.core.io.UrlResource;
 public class DocumentServiceImpl implements DocumentService {
 
     private final DocumentRepository documentRepository;
+    private final NotificationRepository notificationRepository;
 
     @Value("${app.upload.dir:uploads}")
     private String uploadDir;
 
-    public DocumentServiceImpl(DocumentRepository documentRepository) {
+    public DocumentServiceImpl(DocumentRepository documentRepository, NotificationRepository notificationRepository) {
         this.documentRepository = documentRepository;
+        this.notificationRepository = notificationRepository;
     }
 
     @Override
@@ -50,19 +55,25 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     public void deleteDocument(Long id) {
+        Document document = findById(id);
         documentRepository.deleteById(id);
+        saveNotification("Document deleted: " + document.getFileName(), NotificationType.INFO);
     }
 
     @Override
     public DocumentDto uploadDocument(MultipartFile file) {
         validatePdf(file);
-        return toDto(saveFile(file));
+        DocumentDto dto = toDto(saveFile(file));
+        saveNotification("Document uploaded: " + dto.getFileName(), NotificationType.SUCCESS);
+        return dto;
     }
 
     @Override
     public List<DocumentDto> uploadMultipleDocuments(List<MultipartFile> files) {
         files.forEach(this::validatePdf);
-        return files.stream().map(this::saveFile).map(this::toDto).toList();
+        List<DocumentDto> uploaded = files.stream().map(this::saveFile).map(this::toDto).toList();
+        saveNotification(uploaded.size() + " document(s) uploaded successfully", NotificationType.SUCCESS);
+        return uploaded;
     }
 
     @Override
@@ -78,6 +89,15 @@ public class DocumentServiceImpl implements DocumentService {
         } catch (IOException e) {
             throw new RuntimeException("Could not read file for document id: " + id, e);
         }
+    }
+
+    private void saveNotification(String message, NotificationType type) {
+        Notification notification = new Notification();
+        notification.setMessage(message);
+        notification.setType(type);
+        notification.setTimestamp(LocalDateTime.now());
+        notification.setReadStatus(false);
+        notificationRepository.save(notification);
     }
 
     private void validatePdf(MultipartFile file) {

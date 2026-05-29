@@ -2,10 +2,12 @@ package com.docmanagement.service.impl;
 
 import com.docmanagement.dto.NotificationDto;
 import com.docmanagement.entity.Notification;
+import com.docmanagement.entity.Notification.NotificationType;
 import com.docmanagement.repository.NotificationRepository;
 import com.docmanagement.service.NotificationService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -40,6 +42,16 @@ public class NotificationServiceImpl implements NotificationService {
         List<Notification> unread = notificationRepository.findByReadStatus(false);
         unread.forEach(n -> n.setReadStatus(true));
         notificationRepository.saveAll(unread);
+    }
+
+    @Override
+    public void createNotification(String message, NotificationType type) {
+        Notification notification = new Notification();
+        notification.setMessage(message);
+        notification.setType(type);
+        notification.setTimestamp(LocalDateTime.now());
+        notification.setReadStatus(false);
+        notificationRepository.save(notification);
     }
 
     private NotificationDto toDto(Notification n) {
