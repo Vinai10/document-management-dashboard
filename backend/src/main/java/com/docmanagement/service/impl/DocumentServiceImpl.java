@@ -8,6 +8,7 @@ import com.docmanagement.entity.Notification.NotificationType;
 import com.docmanagement.repository.DocumentRepository;
 import com.docmanagement.repository.NotificationRepository;
 import com.docmanagement.service.DocumentService;
+import com.docmanagement.service.NotificationPublisherService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -27,13 +28,17 @@ public class DocumentServiceImpl implements DocumentService {
 
     private final DocumentRepository documentRepository;
     private final NotificationRepository notificationRepository;
+    private final NotificationPublisherService notificationPublisher;
 
     @Value("${app.upload.dir:uploads}")
     private String uploadDir;
 
-    public DocumentServiceImpl(DocumentRepository documentRepository, NotificationRepository notificationRepository) {
+    public DocumentServiceImpl(DocumentRepository documentRepository,
+                               NotificationRepository notificationRepository,
+                               NotificationPublisherService notificationPublisher) {
         this.documentRepository = documentRepository;
         this.notificationRepository = notificationRepository;
+        this.notificationPublisher = notificationPublisher;
     }
 
     @Override
@@ -98,6 +103,7 @@ public class DocumentServiceImpl implements DocumentService {
         notification.setTimestamp(LocalDateTime.now());
         notification.setReadStatus(false);
         notificationRepository.save(notification);
+        notificationPublisher.publish(message, type);
     }
 
     private void validatePdf(MultipartFile file) {
