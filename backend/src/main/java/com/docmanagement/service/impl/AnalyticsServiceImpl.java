@@ -1,0 +1,59 @@
+package com.docmanagement.service.impl;
+
+import com.docmanagement.dto.AnalyticsDto;
+import com.docmanagement.dto.AnalyticsDto.MonthlyUploadDto;
+import com.docmanagement.dto.AnalyticsDto.StatusCountDto;
+import com.docmanagement.entity.Document.DocumentStatus;
+import com.docmanagement.repository.DocumentRepository;
+import com.docmanagement.repository.NotificationRepository;
+import com.docmanagement.service.AnalyticsService;
+import org.springframework.stereotype.Service;
+
+import java.time.Month;
+import java.time.format.TextStyle;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+
+@Service
+public class AnalyticsServiceImpl implements AnalyticsService {
+
+    private final DocumentRepository documentRepository;
+    private final NotificationRepository notificationRepository;
+
+    public AnalyticsServiceImpl(DocumentRepository documentRepository,
+                                NotificationRepository notificationRepository) {
+        this.documentRepository = documentRepository;
+        this.notificationRepository = notificationRepository;
+    }
+
+    @Override
+    public AnalyticsDto getAnalytics() {
+        AnalyticsDto dto = new AnalyticsDto();
+
+        dto.setTotalDocuments(documentRepository.count());
+        dto.setApprovedDocuments(documentRepository.countByStatus(DocumentStatus.APPROVED));
+        dto.setPendingDocuments(documentRepository.countByStatus(DocumentStatus.PENDING));
+        dto.setRejectedDocuments(documentRepository.countByStatus(DocumentStatus.REJECTED));
+        dto.setArchivedDocuments(documentRepository.countByStatus(DocumentStatus.ARCHIVED));
+        dto.setTotalNotifications(notificationRepository.count());
+
+        // Monthly uploads
+        List<Object[]> rows = documentRepository.countByYearMonth();
+        List<MonthlyUploadDto> monthly = rows.stream().map(row -> {
+            int monthNum = ((Number) row[1]).intValue();
+            String monthName = Month.of(monthNum).getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+            long count = ((Number) row[2]).longValue();
+            return new MonthlyUploadDto(monthName, count);
+        }).toList();
+        dto.setMonthlyUploads(monthly);
+
+        // Status distribution
+        List<StatusCountDto> distribution = Arrays.stream(DocumentStatus.values()).map(status ->
+            new StatusCountDto(status.name(), documentRepository.countByStatus(status))
+        ).toList();
+        dto.setStatusDistribution(distribution);
+
+        return dto;
+    }
+}
