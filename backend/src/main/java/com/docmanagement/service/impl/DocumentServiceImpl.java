@@ -7,14 +7,25 @@ import com.docmanagement.repository.DocumentRepository;
 import com.docmanagement.service.DocumentService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class DocumentServiceImpl implements DocumentService {
 
     private final DocumentRepository documentRepository;
+
+    @Value("${app.upload.dir:uploads}")
+    private String uploadDir;
 
     @Override
     public List<DocumentDto> getAllDocuments() {
@@ -36,6 +47,51 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     public void deleteDocument(Long id) {
         documentRepository.deleteById(id);
+    }
+
+    @Override
+    public DocumentDto uploadDocument(MultipartFile file) {
+        validatePdf(file);
+        return toDto(saveFile(file));
+    }
+
+    @Override
+    public List<DocumentDto> uploadMultipleDocuments(List<MultipartFile> files) {
+        files.forEach(this::validatePdf);
+        return files.stream().map(this::saveFile).map(this::toDto).toList();
+    }
+
+    private void validatePdf(MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new IllegalArgumentException("File is empty");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.equals("application/pdf")) {
+            throw new IllegalArgumentException("Only PDF files are allowed");
+        }
+    }
+
+    private Document saveFile(MultipartFile file) {
+        try {
+            Path uploadPath = Paths.get(uploadDir);
+            if (!Files.exists(uploadPath)) {
+                Files.createDirectories(uploadPath);
+            }
+            String storedName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+            Path filePath = uploadPath.resolve(storedName);
+            Files.copy(file.getInputStream(), filePath);
+
+            Document doc = new Document();
+            doc.setFileName(file.getOriginalFilename());
+            doc.setFileSize(file.getSize());
+            doc.setFileType(file.getContentType());
+            doc.setUploadDate(LocalDateTime.now());
+            doc.setStatus(DocumentStatus.PENDING);
+            doc.setFilePath(filePath.toString());
+            return documentRepository.save(doc);
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to store file: " + file.getOriginalFilename(), e);
+        }
     }
 
     private Document findById(Long id) {
