@@ -13,8 +13,11 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
     List<Document> findByFileType(String fileType);
     long countByStatus(DocumentStatus status);
 
-    @Query("SELECT FUNCTION('YEAR', d.uploadDate), FUNCTION('MONTH', d.uploadDate), COUNT(d) " +
-           "FROM Document d GROUP BY FUNCTION('YEAR', d.uploadDate), FUNCTION('MONTH', d.uploadDate) " +
-           "ORDER BY FUNCTION('YEAR', d.uploadDate), FUNCTION('MONTH', d.uploadDate)")
+    @Query(value = "SELECT DATE_FORMAT(upload_date, '%b') AS month, COUNT(*) AS uploads " +
+                    "FROM documents " +
+                    "WHERE upload_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH) " +
+                    "GROUP BY DATE_FORMAT(upload_date, '%Y-%m'), DATE_FORMAT(upload_date, '%b') " +
+                    "ORDER BY MIN(upload_date)",
+           nativeQuery = true)
     List<Object[]> countByYearMonth();
 }

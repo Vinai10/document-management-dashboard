@@ -8,14 +8,14 @@ import com.docmanagement.repository.DocumentRepository;
 import com.docmanagement.repository.NotificationRepository;
 import com.docmanagement.service.AnalyticsService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Month;
-import java.time.format.TextStyle;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
 @Service
+@Transactional(readOnly = true)
 public class AnalyticsServiceImpl implements AnalyticsService {
 
     private final DocumentRepository documentRepository;
@@ -38,12 +38,11 @@ public class AnalyticsServiceImpl implements AnalyticsService {
         dto.setArchivedDocuments(documentRepository.countByStatus(DocumentStatus.ARCHIVED));
         dto.setTotalNotifications(notificationRepository.count());
 
-        // Monthly uploads
+        // Monthly uploads — native query returns [String month, Long uploads]
         List<Object[]> rows = documentRepository.countByYearMonth();
         List<MonthlyUploadDto> monthly = rows.stream().map(row -> {
-            int monthNum = ((Number) row[1]).intValue();
-            String monthName = Month.of(monthNum).getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
-            long count = ((Number) row[2]).longValue();
+            String monthName = (String) row[0];
+            long count = ((Number) row[1]).longValue();
             return new MonthlyUploadDto(monthName, count);
         }).toList();
         dto.setMonthlyUploads(monthly);
