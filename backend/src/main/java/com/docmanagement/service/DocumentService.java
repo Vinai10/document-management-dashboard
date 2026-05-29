@@ -12,4 +12,5 @@ public interface DocumentService {
     void deleteDocument(Long id);
     DocumentDto uploadDocument(MultipartFile file);
     List<DocumentDto> uploadMultipleDocuments(List<MultipartFile> files);
+    org.springframework.core.io.Resource downloadDocument(Long id);
 }

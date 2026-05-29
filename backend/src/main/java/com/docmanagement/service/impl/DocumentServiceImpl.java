@@ -16,6 +16,8 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 
 @Service
 public class DocumentServiceImpl implements DocumentService {
@@ -63,6 +65,21 @@ public class DocumentServiceImpl implements DocumentService {
         return files.stream().map(this::saveFile).map(this::toDto).toList();
     }
 
+    @Override
+    public Resource downloadDocument(Long id) {
+        Document document = findById(id);
+        try {
+            Path filePath = Paths.get(document.getFilePath()).normalize();
+            Resource resource = new UrlResource(filePath.toUri());
+            if (!resource.exists() || !resource.isReadable()) {
+                throw new EntityNotFoundException("File not found for document id: " + id);
+            }
+            return resource;
+        } catch (IOException e) {
+            throw new RuntimeException("Could not read file for document id: " + id, e);
+        }
+    }
+
     private void validatePdf(MultipartFile file) {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("File is empty");
@@ -75,12 +92,16 @@ public class DocumentServiceImpl implements DocumentService {
 
     private Document saveFile(MultipartFile file) {
         try {
-            Path uploadPath = Paths.get(uploadDir);
+            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
-            String storedName = UUID.randomUUID() + "_" + file.getOriginalFilename();
-            Path filePath = uploadPath.resolve(storedName);
+            String originalName = Paths.get(file.getOriginalFilename()).getFileName().toString();
+            String storedName = UUID.randomUUID() + "_" + originalName;
+            Path filePath = uploadPath.resolve(storedName).normalize();
+            if (!filePath.startsWith(uploadPath)) {
+                throw new IllegalArgumentException("Invalid file path");
+            }
             Files.copy(file.getInputStream(), filePath);
 
             Document doc = new Document();
