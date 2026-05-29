@@ -5,15 +5,17 @@ import com.docmanagement.entity.Notification;
 import com.docmanagement.repository.NotificationRepository;
 import com.docmanagement.service.NotificationService;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
+
+    public NotificationServiceImpl(NotificationRepository notificationRepository) {
+        this.notificationRepository = notificationRepository;
+    }
 
     @Override
     public List<NotificationDto> getAllNotifications() {

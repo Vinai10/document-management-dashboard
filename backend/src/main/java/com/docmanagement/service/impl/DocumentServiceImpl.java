@@ -6,7 +6,6 @@ import com.docmanagement.entity.Document.DocumentStatus;
 import com.docmanagement.repository.DocumentRepository;
 import com.docmanagement.service.DocumentService;
 import jakarta.persistence.EntityNotFoundException;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -19,13 +18,16 @@ import java.util.List;
 import java.util.UUID;
 
 @Service
-@RequiredArgsConstructor
 public class DocumentServiceImpl implements DocumentService {
 
     private final DocumentRepository documentRepository;
 
     @Value("${app.upload.dir:uploads}")
     private String uploadDir;
+
+    public DocumentServiceImpl(DocumentRepository documentRepository) {
+        this.documentRepository = documentRepository;
+    }
 
     @Override
     public List<DocumentDto> getAllDocuments() {
